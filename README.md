@@ -3,7 +3,7 @@
 
 # Sobre o projeto
 
-  Esse projeto um contato mais intermediário com o django nele foi aprendido como usar o Mysql, tipos de formularios forms e models forms que são formularios que são integrados no banco de dados, como enviar emails ultilizando django, sessões de usuarios, uploads de arquivos/imagens, ultilizando slug...
+  Esse projeto foi um contato mais intermediário com o django nele foi aprendido como usar o Mysql, tipos de formularios forms e models forms que são formularios que são integrados no banco de dados, como enviar emails ultilizando django, sessões de usuarios, uploads de arquivos/imagens, ultilizando slug...
 
 ## Layout web
 ![Web 1](https://github.com/GuilhermeGTM/PythonDjangoIntermediario/blob/master/demo/image1.png)
