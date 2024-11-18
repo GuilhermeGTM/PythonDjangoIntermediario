@@ -1,0 +1,693 @@
+                    ## INSTALANDO VENV ##
+--->pip install django whitenoise gunicorn django-bootstrap4 PyMySQL django-stdimage MySQL
+ativando .\.venv\Scripts\python.exe
+
+whitenoise          é para apresentar os arquivos static
+gunicorn            é para rodar o servidor feito para python
+django-bootstrap4   é um framework front end integrado com django
+PyMySQL             drive de conexão do python com mysql
+django-stdimage     facilita trabalhar com imagens
+
+                    ## CRIANDO PROJETO ##
+--->django-admin startproject django2 .
+
+                    ## CRIANDO APLICAÇÃO ##
+--->django-admin startapp core
+
+                    ## CONFIGURANDO SETTING DO PROJETO ##
+**
+ALLOWED_HOSTS = ['*']
+**
+
+**
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'core',
+    'bootstrap4',
+    'stdimage',
+]
+**
+
+**
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'django2',
+        'USER': 'root',
+        'PASSWORD': '12345678',
+        'HOST': 'localhost',
+        'PORT': '3306',
+    }
+}
+**
+
+**
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+**
+
+                    ## Criando views ##
+**
+from django.shortcuts import render
+
+
+def index(request):
+    return render(request, 'index.html')
+
+
+def contato(request):
+    return render(request, 'contato.html')
+
+
+def produto(request):
+    return render(request, 'produto.html')
+**
+Apos se cria dentro da aplicação no caso core uma pasta chamada de templates e dentro dela index.html,produto.html,contato.html
+criamos uma pasta dentro da aplicação chamada de static dentro dela 3 pastas css,images,js
+
+                    ## Definindo Rotas ##
+importa o include na urls.py dentro do PROJETO e adiciona o caminho
+**
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('core.urls')),
+]
+**
+dentro da aplicação no caso core criamos um arquivo chamado urls.py dentro dele colocamos
+**
+from django.urls import path
+
+from .views import index, contato, produto
+
+urlpatterns = [
+    path('', index, name='index'),
+    path('contato', contato, name='contato'),
+    path('produto', produto, name='produto'),
+]
+**
+Apos tudo isso aplicar o codifo
+aplicando todas migrations no banco de dados
+--->python manage.py migrate
+
+                    ## Criando super usuario ##
+--->python manage.py createsuperuser
+user admin
+pass admin123
+
+para rodar o servidor
+--->python manage.py runserver
+
+                    ## CRIANDO FORMS para tipo contato sem salvar em banco ##
+Dentro da aplicação no caso core vamos criar um arquivo chamado de forms.py
+dentro dele colocamos
+**
+from django import forms
+
+
+class ContatoForm(forms.Form):
+    nome = forms.CharField(label='Nome', max_length=100)
+    email = forms.EmailField(label='E-mail', max_length=100)
+    assunto = forms.CharField(label='Assunto', max_length=120)
+    mensagem = forms.CharField(label='Mensagem', widget=forms.Textarea())
+
+**
+
+usamos esse form dentro do arquivo views importando ele 
+**
+from .forms import ContatoForm
+**
+
+aplicando na views, vamos usar esse form dentro da função contato assim ficando:
+**
+def contato(request):
+    form = ContatoForm()
+
+    context = {
+        'form': form
+    }
+    return render(request, 'contato.html', context)
+**
+Dentro de contato.html configuramos da seguinte maneira
+
+**
+{% load bootstrap4 %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Contato</title>
+    {% bootstrap_css %}
+</head>
+<body>
+    <div class="container">
+        <h1>Contato</h1>
+        {% bootstrap_messages %}
+
+        <form action="{% url 'contato' %}" method="post" class="form" autocomplete="off">
+            {% csrf_token %}
+            {% bootstrap_form form %}
+            {% buttons %}
+                <button type="submit" class="btn btn-primary" >Enviar Mensagem</button>
+            {% endbuttons %}
+        </form>
+    </div>
+{% bootstrap_javascript jquery='full' %}
+</body>
+</html>
+**
+
+{% load bootstrap4 %} -  carrega bootstrap
+{% bootstrap_css %} -  carrega css
+{% bootstrap_messages %} -  carrega mensagem do bootstrap
+<form action="{% url 'contato' %}" method="post" class="form" autocomplete="off"> 
+{% url 'contato' %} - qual views recebe os dados no caso 'contato'
+ method="post" -  post enviar dados
+ class="form" -  para que o bootstrap aplique o css de form
+ autocomplete="off" -  para não ter o preenchimento de dados automatico
+{% csrf_token %} - gera um token de segurança
+{% bootstrap_form form %} -  carrega css no meu form
+
+o fomulario está quase pronto agora precisamos tratar os dados 
+dentro de views na função contato tratamos
+
+**
+from django.contrib import messages
+
+def contato(request):
+    form = ContatoForm(request.POST or None)
+
+    if str(request.method) == 'POST':
+        if form.is_valid():
+            nome = form.cleaned_data['nome']
+            email = form.cleaned_data['email']
+            assunto = form.cleaned_data['assunto']
+            mensagem = form.cleaned_data['mensagem']
+
+            print('Mensagem enviada')
+            print(f'Nome: {nome}')
+            print(f'E-mail: {email}')
+            print(f'Assunto: {assunto}')
+            print(f'Mensagem: {mensagem}')
+
+            messages.success(request, 'E-mail enviado com  Sucesso')
+            form = ContatoForm()
+        else:
+            messages.error(request, 'Erro ao enviar e-mail')
+
+    context = {
+        'form': form
+    }
+    return render(request, 'contato.html', context)
+**
+messages  esse import conseguimos tratar mensagens de sucesso ou de error
+a parte de contato tanto vai servir de get quando o usuario carrega a pagina ou de post quando for enviar o formulario
+is_valid() verefica se é valido sem erros retorna true
+form.cleaned_data pega os dados na variavel
+
+                    ## Configurando para Enviar email ##
+Como não temos um servidor de email, vamos imprimir no console configurando da seguinte maneira
+dentro de setting colocamos 
+**
+# configurações de email
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+# caso tenha um servidor de email usar
+"""
+EMAIL_HOST = 'locahost'
+EMAIL_HOST_USER = 'no-reply@seudominio.com.br'
+EMAIL_PORT = 587
+EMAIL_USER_TLS = True
+EMAIL_HOST_PASSWORD = 'sua senha'
+"""
+
+**
+
+                                configurando o forms
+foi adicionado uma função def send_mail
+**
+from django import forms
+from django.core.mail.message import EmailMessage
+
+
+class ContatoForm(forms.Form):
+    nome = forms.CharField(label='Nome', max_length=100)
+    email = forms.EmailField(label='E-mail', max_length=100)
+    assunto = forms.CharField(label='Assunto', max_length=120)
+    mensagem = forms.CharField(label='Mensagem', widget=forms.Textarea())
+
+    def send_mail(self):
+        nome = self.cleaned_data['nome']
+        email = self.cleaned_data['email']
+        assunto = self.cleaned_data['assunto']
+        mensagem = self.cleaned_data['mensagem']
+
+        conteudo = f'Nome: {nome}\nE-mail: {email}\nAssunto: {assunto}\nMensagem: {mensagem}'
+
+        mail = EmailMessage(
+            subject='E-mail enviado pelo sistema django2',
+            body=conteudo,
+            from_email='contato@seudominio.com.br',
+            to=['contato@seudominio.com.br',],
+            headers={'Reply-To': email}
+        )
+        mail.send()
+**
+
+                            configurando o views
+foi tirado uma parte do anterior trocando por apenas form.send_mail()
+**
+from django.shortcuts import render
+from django.contrib import messages
+
+from .forms import ContatoForm
+
+
+def index(request):
+    return render(request, 'index.html')
+
+
+def contato(request):
+    form = ContatoForm(request.POST or None)
+
+    if str(request.method) == 'POST':
+        if form.is_valid():
+            form.send_mail()
+
+            messages.success(request, 'E-mail enviado com  Sucesso')
+            form = ContatoForm()
+        else:
+            messages.error(request, 'Erro ao enviar e-mail')
+
+    context = {
+        'form': form
+    }
+    return render(request, 'contato.html', context)
+
+
+def produto(request):
+    return render(request, 'produto.html')
+
+**
+
+                    ## configurando o models ##
+
+**
+from django.db import models
+from stdimage.models import StdImageField
+
+# SIGNALS
+from django.db.models import signals
+from django.template.defaultfilters import slugify
+
+
+class Base(models.Model):
+    criado = models.DateField('Data de Criação', auto_now_add=True)
+    modificado = models.DateField('Data de Atualização', auto_now=True)
+    ativo = models.BooleanField('Ativo?', default=True)
+
+    class Meta:
+        abstract = True
+
+
+class Produto(Base):
+    nome = models.CharField('Nome', max_length=100)
+    preco = models.DecimalField('Preço', max_digits=8, decimal_places=2)
+    estoque = models.IntegerField('Estoque')
+    imagem = StdImageField(
+        'Imagem', upload_to='produtos', variations={'thumb': (124, 124)})
+    slug = models.SlugField('Slug', max_length=100, blank=True, editable=False)
+
+    def __str__(self):
+        return self.nome
+
+
+def produto_pre_save(signal, instance, sender, **kwargs):
+    instance.slug = slugify(instance.nome)
+
+
+signals.pre_save.connect(produto_pre_save, sender=Produto)
+
+**
+apos usar o comando para criar migrations
+--->python manage.py makemigrations
+se tudo ok
+--->python manage.py migrate
+
+                    ## configurando admin ##
+essa configuração visa em oq eu quero mostarr no /admin na parte adminstrativa do site
+**
+from django.contrib import admin
+
+from .models import Produto
+
+
+@admin.register(Produto)
+class ProdutoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'preco', 'estoque', 'slug',
+                    'criado', 'modificado', 'ativo')
+
+**
+
+
+
+                    ## Criando ModelForm  ##
+dentro deforms da aplicação complementamos com 
+
+**
+from .models import Produto
+
+class ProdutoModelForm(forms.ModelForm):
+    class Meta:
+        model = Produto
+        fields = ['nome', 'preco', 'estoque', 'imagem']
+
+**
+
+assim ficando
+
+**
+from django import forms
+from django.core.mail.message import EmailMessage
+
+from .models import Produto
+
+
+class ContatoForm(forms.Form):
+    nome = forms.CharField(label='Nome', max_length=100)
+    email = forms.EmailField(label='E-mail', max_length=100)
+    assunto = forms.CharField(label='Assunto', max_length=120)
+    mensagem = forms.CharField(label='Mensagem', widget=forms.Textarea())
+
+    def send_mail(self):
+        nome = self.cleaned_data['nome']
+        email = self.cleaned_data['email']
+        assunto = self.cleaned_data['assunto']
+        mensagem = self.cleaned_data['mensagem']
+
+        conteudo = f'Nome: {nome}\nE-mail: {email}\nAssunto: {assunto}\n\
+            Mensagem: {mensagem}'
+
+        mail = EmailMessage(
+            subject='E-mail enviado pelo sistema django2',
+            body=conteudo,
+            from_email='contato@seudominio.com.br',
+            to=['contato@seudominio.com.br',],
+            headers={'Reply-To': email}
+        )
+        mail.send()
+
+
+class ProdutoModelForm(forms.ModelForm):
+    class Meta:
+        model = Produto
+        fields = ['nome', 'preco', 'estoque', 'imagem']
+
+**
+
+                    ## Adionando  ProdutoModelForm na views ##
+
+**
+def produto(request):
+    if str(request.method) == 'POST':
+        form = ProdutoModelForm(request.POST, request.FILES)
+        if form.is_valid():
+            prod = form.save(commit=False)
+
+            print(f'Nome: {prod.nome}')
+            print(f'Preço: {prod.preco}')
+            print(f'Estoque: {prod.estoque}')
+            print(f'Imagem: {prod.imagem}')
+
+            messages.success(request, 'Produto salvo com sucesso.')
+            form = ProdutoModelForm()
+        else:
+            messages.error(request, 'Erro ao salvar produto.')
+    else:
+        form = ProdutoModelForm()
+    context = {
+        'form': form
+    }
+    return render(request, 'produto.html', context)
+
+**
+lembrando não estamos salvando ainda no banco de dados , somente imprimindo
+
+                    ## Configurando o produto.html ##
+
+**
+{% load bootstrap4 %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Produto</title>
+    {% bootstrap_css %}
+</head>
+<body>
+    <div class="container">
+        <h1>Produto</h1>
+        {% bootstrap_messages %}
+
+        <form action="{% url 'produto' %}" method="post" class="form" autocomplete="off" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% bootstrap_form form %}
+            {% buttons %}
+                <button type="submit" class="btn btn-primary">Cadastrar</button>
+            {% endbuttons %}
+        </form>
+    </div>
+{% bootstrap_javascript jquery='full' %}
+</body>
+</html>
+**
+
+                    ## Configurando o setting para midia ##
+adicionamos no setting maneira correta
+**
+MEDIA_URL = 'midia/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'midia')
+**
+
+                    ##  Usando uma rota já existen em urls.py ##
+no caso estamos dizendo para usarmos essa rota de imagens no template
+**
++ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+**
+dessa maneira ficando assim
+**
+"""
+URL configuration for django2 project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/5.1/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path, include
+
+from django.conf.urls.static import static
+from django.conf import settings
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('core.urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+**
+
+                    ## Configurando a views para salvar o produto ##
+vamos apagar um pedaço agora da impressão ficando somente 
+**
+form.save()
+**
+o codigo ficou assim na views
+**
+from django.shortcuts import render
+from django.contrib import messages
+
+from .forms import ContatoForm, ProdutoModelForm
+
+
+def index(request):
+    return render(request, 'index.html')
+
+
+def contato(request):
+    form = ContatoForm(request.POST or None)
+
+    if str(request.method) == 'POST':
+        if form.is_valid():
+            form.send_mail()
+
+            messages.success(request, 'E-mail enviado com  Sucesso')
+            form = ContatoForm()
+        else:
+            messages.error(request, 'Erro ao enviar e-mail')
+
+    context = {
+        'form': form
+    }
+    return render(request, 'contato.html', context)
+
+
+def produto(request):
+    if str(request.method) == 'POST':
+        form = ProdutoModelForm(request.POST, request.FILES)
+        if form.is_valid():
+
+            form.save()
+
+            messages.success(request, 'Produto salvo com sucesso.')
+            form = ProdutoModelForm()
+        else:
+            messages.error(request, 'Erro ao salvar produto.')
+    else:
+        form = ProdutoModelForm()
+    context = {
+        'form': form
+    }
+    return render(request, 'produto.html', context)
+
+**
+
+                    ## configurando o index para mostrar os produtos ##
+dentro da views importamos o produto de models
+**
+from .models import Produto
+**
+
+e o index colocamos o seguinte codigo
+**
+def index(request):
+    context = {
+        'produtos': Produto.objects.all()
+    }
+    return render(request, 'index.html', context)
+**
+
+                    ## configurando o index ##
+
+**
+{% load bootstrap4 %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Index</title>
+    {% bootstrap_css %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Produtos</h1>
+
+        <table class="table table-dark">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Produto</th>
+                    <th scope="col">Preço</th>
+                    <th scope="col">Estoque</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for produto in produtos %}
+                    <tr>
+                        <td scope="row">{{ produto.id }}</td>
+                        <td scope="row"><a href="#modal{{produto.id}}" data-toggle="modal">{{ produto.nome }}</a></td>
+                        <td scope="row">{{ produto.preco }}</td>
+                        <td scope="row">{{ produto.estoque }}</td>     
+                    </tr>
+                    <div class="modal fade bd-example-modal-lg show" id="modal{{produto.id}}" role="dialog">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body" id="dynamic-content">
+                                    <img src="{{ produto.imagem.url}}" class="img-fluid" alt="{{ produto.nome }}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+{% bootstrap_javascript jquery='full' %}
+</body>
+</html>
+**
+
+o css  tbm foi configurado
+**
+a {
+    color: #fff;
+}
+**
+ a cor do link foi modificada para azul
+
+
+                    ## Criando sessions de usuarios ###
+queremos que o produto fique acessivel somente 
+logado no sistema
+fazendo import  dentro da views de produto 
+**
+from django.shortcuts import redirect
+**
+
+configurando o produto dentro da views
+foi adicionado essa linha dentro de produto
+**
+ if str(request.user) != 'AnonymousUser':
+**
+
+o codigo ficando assim
+
+**
+def produto(request):
+    if str(request.user) != 'AnonymousUser':
+        if str(request.method) == 'POST':
+            form = ProdutoModelForm(request.POST, request.FILES)
+            if form.is_valid():
+
+                form.save()
+
+                messages.success(request, 'Produto salvo com sucesso.')
+                form = ProdutoModelForm()
+            else:
+                messages.error(request, 'Erro ao salvar produto.')
+        else:
+            form = ProdutoModelForm()
+        context = {
+            'form': form
+        }
+        return render(request, 'produto.html', context)
+    else:
+        return redirect('index')
+
+**
