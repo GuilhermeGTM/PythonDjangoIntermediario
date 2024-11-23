@@ -39,8 +39,7 @@
 **
 
 # Como executar o projeto
-instalar python
-após  o pull
+
 ```bash
 instalar o venv na pasta do projeto
 --->python -m venv .venv
@@ -48,8 +47,9 @@ ativando venv
 --->.\.venv\Scripts\Activate.ps1
 baixando as dependencias
 --->python -m pip install -r requirements.txt
+-->python manage.py migrate
 executando o projeto
---->-->python manage.py runserver
+-->python manage.py runserver
 ```
 
 # Autor
