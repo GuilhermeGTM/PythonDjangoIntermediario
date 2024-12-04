@@ -99,8 +99,7 @@ aplicando todas migrations no banco de dados
 
                     ## Criando super usuario ##
 --->python manage.py createsuperuser
-user admin
-pass admin123
+
 
 para rodar o servidor
 --->python manage.py runserver
